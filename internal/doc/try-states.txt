@@ -1,0 +1,10 @@
+try{       ->  push TRY, set  ( errB = F, errI = 0 ), start WHILE, exec TRY code
+}try       ->  stack empty -> fail.  peek; if THROW: fail;  pop
+throw      ->  stack empty -> fail.  peek; if !TRY: fail; replace TRY on stack with THROW
+catch{     ->  stack empty -> fail.  peek; if TRY: replace TRY with CATCH;  elif ¡THROW: fail;  else replace TRY with CAUGHT, exec CATCH code
+}catch     ->  stack empty -> fail.  peek; if (CATCH | CAUGHT), ignore;  else fail
+finally{   ->  stack empty -> fail.  peek; if (TRY | CATCH | CAUGHT), pop, push FINALLY, exec FINALLY code; else fail. 
+}finally   ->  stack empty -> fail.  peek; if !FINALLY: fail;  pop
+
+}catch{    ->  (syn of  "catch{" )
+}finally{  ->  (syn of  "finally{" )

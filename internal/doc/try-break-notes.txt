@@ -1,0 +1,233 @@
+very first notes & usage info on try/catch:
+---- notes ----
+
+TRY{ =
+while true; do
+    while true; do
+
+CATCH{ =
+        break; done
+    if error then;
+
+}CATCH =
+        fi; done
+
+}CATCH_FINALLY{ =
+        fi; done
+    while true; do
+
+FINALLY{ =
+    while true; do
+
+}FINALLY =
+        break; done
+
+}TRY
+    break; done
+
+
+---- usage ----
+
+TRY{
+    stuff
+}TRY
+
+
+TRY{
+    stuff
+    CATCH{
+        caught-stuff
+    }CATCH
+}TRY
+
+
+TRY{
+    stuff
+    FINALLY{
+        finally-stuff
+    }FINALLY
+}TRY
+
+
+TRY{
+    stuff
+    CATCH{
+        caught-stuff
+    }CATCH
+    FINALLY{
+        finally-stuff
+    }FINALLY
+}TRY
+
+
+TRY{
+    stuff
+    CATCH{
+        caught-stuff
+    }CATCH_FINALLY{
+        finally-stuff
+    }CATCH_FINALLY
+}TRY
+
+
+=========
+later notes on try/catch
+
+INTERNAL MACROS:
+                                   ..._A_I_breakOnErrorSet
+                                   ..._A_I_failOnEmptyStateStack  -> ..._V_err[BIS]; break
+    ..._P_stateS_L=( ) ..._P_errS=   ..._A_I_failOnStateAbsent  -> ..._V_err[BIS]; break
+    ..._P_stateS_L=( ) ..._P_errS=   ..._A_I_failOnStatePresent  -> ..._V_err[BIS]; break
+    ..._P_stateS=""                ..._A_I_statePush
+                                   ..._A_I_statePop -> ..._V_replyS
+    ..._P_stateS=""                ..._A_I_stateSet
+                                   ..._A_I_stateGet -> ..._V_replyS
+    ..._P_err[IS]=...              ..._A_I_errorSet -> ..._V_err[BIS]
+
+try{
+    ..._A_I_breakOnErrorSet
+    inserts 4 layers of "repeat 1", call them "K", "L", "M", "N"
+    ..._P_stateS=TRY    ..._A_I_statePush
+    <user TRY code goes here>
+
+throw
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( TRY )   ..._A_I_failOnStateAbsent
+    ..._P_stateS=THROW    ..._A_I_stateSet
+    perform single "break" (i.e. skip to right after "N" close), no matter what path is taken
+
+}try_
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( TRY THROW )   ..._A_I_failOnStateAbsent
+    close "N", "M", "L", "K"
+    ..._A_I_breakOnErrorSet
+    ..._P_stateS_L=( THROW ) ..._P_errS="uncaught THROW"   ..._A_I_failOnStatePresent
+    ..._A_I_statePop
+
+catch{
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( TRY THROW )   ..._A_I_failOnStateAbsent
+    close "N"
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( TRY THROW )   ..._A_I_failOnStateAbsent
+    ..._A_I_stateGet
+    if ..._V_replyS!=THROW
+        ..._P_stateS=CATCH  ..._A_I_stateSet;  break (i.e. skip to after "M" close)
+    ..._P_stateS=CAUGHT  ..._A_I_stateSet
+    <user CATCH code goes here>
+
+}catch  (syn: "}catch{")
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    close "M"
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( CATCH CAUGHT )   ..._A_I_failOnStateAbsent
+
+}catch_
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    close "M", L", "K"
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( CATCH CAUGHT )   ..._A_I_failOnStateAbsent
+    ..._A_I_statePop
+
+nocatch  (syn: "}nocatch{")  (must be used in place of CATCH if no CATCH is present)
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    close "N", "M"
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( TRY THROW )   ..._A_I_failOnStateAbsent
+    ..._P_stateS=NOCATCH  ..._A_I_stateSet
+    
+finally{  (syn: "}finally{")
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( CATCH CAUGHT NOCATCH )   ..._A_I_failOnStateAbsent
+    ..._P_stateS=FINALLY  ..._A_I_stateSet
+    <user FINALLY code goes here>
+
+}finally
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    close "L"
+    ..._A_I_breakOnErrorSet
+    ..._P_stateS_L=( FINALLY )   ..._A_I_failOnStateAbsent
+
+}finally_
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( FINALLY )   ..._A_I_failOnStateAbsent
+    close "L", "K"
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( FINALLY )   ..._A_I_failOnStateAbsent
+    ..._A_I_statePop
+
+nofinally  (must be used in place of FINALLY if no FINALLY is present)
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( CATCH CAUGHT NOCATCH )   ..._A_I_failOnStateAbsent
+    close "L"
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( CATCH CAUGHT NOCATCH )   ..._A_I_failOnStateAbsent
+    ..._P_stateS=NOFINALLY  ..._A_I_stateSet
+
+}try
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( FINALLY NOFINALLY )   ..._A_I_failOnStateAbsent
+    close "K"
+    ..._A_I_breakOnErrorSet
+    ..._A_I_failOnEmptyStateStack
+    ..._P_stateS_L=( FINALLY NOFINALLY )   ..._A_I_failOnStateAbsent
+    ..._A_I_statePop
+
+
+
+---
+PATHS
+
+try{   }try_
+    layer+4  layer-4
+
+try{   throw   }try_
+    layer+4   -   layer-4
+
+try{   throw   catch{   }catch   finally{   }finally  }try
+    layer+4   -   layer-1   layer-1  -  layer-2  layer-1
+
+try{   nocatch  finally{   }finally   }try
+    layer+4   layer-2   -   layer-1   layer-1
+
+try{   catch{   }catch   nofinally   }try
+    layer+4   layer-1   layer-1   layer-1   layer-1
+
+try{   nocatch   nofinally   }try
+    layer+4   layer-2   layer-1   layer-1
+
+try{   catch{   }catch_
+    layer+4   layer-1   layer-3
+
+try{   catch_{   }catch_
+    layer+4   layer-1   layer-3
+
+try{   nocatch   finally{  }finally_
+    layer+4   layer-2   layer-1   layer-2
+
+try{   catch{   }catch   finally{  }finally_
+    layer+4   layer-1   layer-1   -   layer-2
+
+
+try{   }catch{   }catch_
+
+try{   }catch{   }finally{   }finally_
+
+try{   }nocatch{   <code here always ignored>  }finally{   }finally_

@@ -1,0 +1,165 @@
+An FSM has states, conditions, and code.  Here is EBNF for this idea:
+
+fsm ::= state states | NULL
+ident ::= [A-Za-z_][A-Za-z_0-9]*
+code  ::= <any snippet of executable zsh code>
+test  ::= <any snippet of zsh code that could go between '[[' and ']]'>
+statename ::= <ident>
+state ::= 'state' <statename> '{' cases '}'
+cases ::= case cases | NULL
+case ::= 'case' <ident> '{' actions '}'
+actions ::= action actions | NULL
+action ::= action_(exec|test|go|stop|fail)
+action_exec ::= 'exec'  <code>
+action_test ::= 'if'    <test>
+action_go   ::= 'go'    <statename>
+action_stop ::= 'stop'
+action_fail ::= 'fail'  <failargs>
+failargs ::= <uint> <string>
+
+
+Here is an FSM, encoded with the above EBNF, that parses a line of excel-formatted csv:
+
+--------
+state init {
+    case  sole {
+        exec  errB=${B_F}  errS=  replyL=();  INT_L indexI=1  lineI=${#lineS};  LIST_L fieldL=();  STR_L charS  fieldS=  tailS= char_SPC=" "  char_COMMA=${INTERNAL_FRAMEWORK_CI_nametocharM[comma]}  char_DQ=${INTERNAL_FRAMEWORK_CI_nametocharM[qd]}  char_TAB;  print -v char_TAB -f '\t'
+        go    start
+    }
+}
+
+state start {
+    case eol {
+        if    ${indexI} -gt ${lineI}
+    	go    wrap
+    }
+    case initchar {
+        exec  charS=${lineS[indexI]}
+    }
+    case white {
+        if    ${charS} = ${char_SPC} || ${charS} = ${char_TAB}
+        go    headwhite
+    }
+    case quote {
+        if    ${charS} = ${char_DQ}
+        exec  indexI+=1
+        go    quoted
+    }
+    case other {
+        go    unquoted
+    }
+}
+
+state headwhite {
+    case eol {
+        if    ${indexI} -gt ${lineI}
+        go    wrap
+    }
+    case init {
+        exec  charS=${lineS[${indexI}]}
+    }
+    case white {
+        if    ${charS} = ${char_SPC} || ${charS} = ${char_TAB}
+        exec  indexI+=1
+        go    headwhite
+    }
+    case else {
+        go    start
+    }
+}
+
+state quoted {
+    case eol {
+        if    ${indexI} -gt ${lineI}
+        fail  1  "EOL found inside quoted string"
+    }
+    case init {
+        exec  charS=${lineS[${indexI}]}
+    }
+    case quote {
+        if    ${charS} = ${char_DQ}
+        exec  indexI+=1
+        go    q2
+    }
+    case other {
+        exec  fieldS+=${charS};  indexI+=1
+        go    quoted
+    }
+}
+
+state q2 {
+    case eol {
+        if    ${indexI} -gt ${lineI}
+        go    wrap
+    }
+    case init {
+        exec  charS=${lineS[${indexI}]}
+    }
+    case quote {
+        if    ${charS} = ${char_DQ}
+        exec  fieldS+=${char_DQ};  indexI+=1
+        go    quoted
+    }
+    case other {
+        exec  indexI+=1
+        go    unquoted
+    }
+}
+
+state unquoted {
+    case eol {
+        if    ${indexI} -gt ${lineI}
+        go    wrap
+    }
+    case init {
+        exec  charS=${lineS[${indexI}]}
+    }
+    case comma {
+        if    ${charS} = ${char_COMMA}
+        exec  fieldL+=( "${fieldS}" );  fieldS=;  indexI+=1
+        go    start
+    }
+    case white {
+        if    ${charS} = ${char_SPC} || ${charS} = ${char_TAB}
+        exec  tailS=
+        go    tailwhite
+    }
+    case other {
+        exec  fieldS+=${tailS}${charS};  tailS=;  indexI+=1
+        go    unquoted
+    }
+}
+
+state tailwhite {
+    case eol {
+        if    ${indexI} -gt ${lineI}
+        go    wrap
+    }
+    case init {
+        exec  charS=${lineS[${indexI}]}
+    }
+    case comma {
+        if    ${charS} = ${char_COMMA}
+	exec  tailS=
+        go    unquoted
+    }
+    case white {
+        if    ${charS} = ${char_SPC} || ${charS} = ${char_TAB}
+        exec  tailS+=${charS};  indexI+=1
+        go    tailwhite
+    }
+    case other {
+        exec  fieldS+=${tailS};  tailS=
+        go    unquoted
+    }
+}
+
+state wrap {
+    case append {
+	exec  fieldL+=( "${fieldS}" )
+    }
+    case only {
+        exec  replyL=( "${(@)fieldL[@]}" )
+        stop
+    }
+}

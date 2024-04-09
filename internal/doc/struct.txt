@@ -1,0 +1,162 @@
+Desired
+
+---- schematic notes only, not real definitions ----
+STRUCT_DEF coord_ST=(
+    FLOATF  xF
+    FLOATF  yF
+)
+
+STRUCT_DEF fred_STD=(
+    INT   countI
+    STR   descS
+    LIST  componentL
+    coord_T locST
+)
+----
+
+
+then access as:
+% typeS=fred_STD nameS=myFredST INTERNAL_STRUCT_A_alloc
+
+all components of myFredST are refs to the vars that hold the contents, thus, to set countI, do as follows:
+% eval "${myFredST[countI]}=27"
+
+to get the ref (var name) for a particular field of myFredST, do:
+% fredcomponentrefS=${myFredST[componentL]}
+
+and since componentL is a list, you can add to the list like this:
+% eval "${myFredST[componentL]}+=( new_list_value )"
+
+and can set specific subscripted values like this:
+% eval "${fredcomponentrefS}[3]='412 is a number'"
+
+to set the values inside myFredST.locST:
+% STR_L coordR=${myFredST[locST]}
+% STR_L refXS=${(P)${coordR}[xF]}
+% STR_L refYS=${(P)${coordR}[yF]}
+% eval "${refXS}=12.34  ${refYS}=56.78"
+
+to fetch the values from myFredST.locST:
+% STR_L     coordR=${myFredST[locST]}
+% FLOATF_L  myXF=${(P)${(P)${coordR}[xF]}}  myYF=${(P)${(P)${coordR}[YF]}}
+
+or even:
+% FLOATF_L  myXF=${(P)${(P)${myFredST[locST]}[xF]}}  myYF=${(P)${(P)${myFredST[locST]}[YF]}}
+
+
+# should the stmt below add a single sub-list elt of (a b c) to myFredST[componentL], or add three indiv list elts to myFredST[componentL] list?
+eval "${fredcomponentrefS}+=( a b c )"
+# the answer is that it will add 3 individual elements, because we aren't really solving the zsh lists-hold-only-scalar-values problem here
+
+
+# expanded lists and maps
+
+# we could have LISTX and MAPX types that are lists and maps, respectively, that hold refs only, as structs do.
+# then we could do something like this:
+
+
+# create a LISTX
+typeS=LISTX nameS=myLX INTERNAL_XTYPE_A_alloc
+
+# append an element to out LISTX
+nameS=myLX typeS=S valueS="a str value" INTERNAL_XTYPE_A_listxAppend
+
+# another way
+INTERNAL_DYNVAR_F_allocSTR
+STR_L varnameS=${INTERNAL_DYNVAR_V_replyS}
+eval "${varnameS}='a str value'"
+myLX+=( $(varnameS} )
+
+
+# get the final listx element
+nameS=myLX subscriptI=-1 INTERNAL_XTYPE_A_listxEltRefGet -> INTERNAL_XTYPE_V_replyS, which is a ref (i.e. var name)
+valueS=${(P)${INTERNAL_XTYPE_V_replyS}}    # only works if the ref refers to a STR value
+
+# another way
+nameS=myLX subscriptI=-1 INTERNAL_XTYPE_A_listxEltValueGet
+    -> INTERNAL_XTYPE_V_reply[BISFELM,LX,MX,ref], which contains the content
+    -> INTERNAL_XTYPE_V_typeS contains the type of the returned element [BISFELM,LX,MX,ref]
+valueS=${INTERNAL_XTYPE_V_replyS} or valueB=${INTERNAL_XTYPE_V_replyB} or ...
+
+
+# create a MAPX
+typeS=MAPX nameS=myMX INTERNAL_XTYPE_A_alloc
+
+# set a MAPX value
+nameS=myLX typeS=S keyS=Mikey valueS="a str value" INTERNAL_XTYPE_A_mapxSet
+
+# another way to set a MAPX value (not recommended, implementation-dependent)
+INTERNAL_DYNVAR_F_allocSTR
+STR_L varnameS=${INTERNAL_DYNVAR_V_replyS}
+eval "${varnameS}='a str value'"
+myMX[Mikey]=${varnameS}
+
+
+# get mapx element by key
+mapxnameS=myMX keyS=Mikey INTERNAL_XTYPE_A_mapxEltRefGet -> INTERNAL_XTYPE_V_replyS, which is a ref (i.e. var name)
+valueS=${(P)${INTERNAL_XTYPE_V_replyS}}    # only works if the ref refers to a STR value, but reply[BIFELM] can also be used
+
+# another way to get mapx element by key
+mapxnameS=myMX keyS=Mikey INTERNAL_XTYPE_A_mapxEltValueGet
+    -> INTERNAL_XTYPE_V_reply[BISFELM], which contains the content
+    -> INTERNAL_XTYPE_V_typeS contains the type of the returned element [BISFELM,LX,MX,ref]
+valueS=${INTERNAL_XTYPE_V_replyS} or valueB=${INTERNAL_XTYPE_V_replyB} or ...
+
+# yet another way to get mapx element by key
+mapxnameS=myMX keyS=Mikey targetS=thisS INTERNAL_XTYPE_A_mapxEltValueGet
+    -> INTERNAL_XTYPE_V_reply[BISFELM], which contains the content
+    -> INTERNAL_XTYPE_V_typeS contains the type of the returned element [BISFELM,LX,MX,ref]
+    -> *targetS (i.e. var "thisS"), which also contains the content
+
+
+# structs can be impemented as an extension of MAPX, but don't necessarily need to be
+# refs need to be both a type name and a pointer to the value
+
+
+
+
+usage:
+modS=freddie structdefnameS=fred_STD structdefL=(
+    INT   countI
+    STR   descS
+    LIST  componentL
+    coord_ST locST
+)  INTERNAL_STRUCT_A_define
+
+
+INTERNAL_STRUCT_A_define is defined like:
+----
+# check for existence & types of mods, structdefnameS, and structdefL vars
+# ensure modS is a syntactically-valid mod name
+# ensure structdefnameS is a valid struct name that is to this point unused in the context of modS
+for typeS,nameS in structdefL
+  # check that typeS is a valid, known type, that has been defined before this struct def invocation
+  # check that nameS is a valid var name for the given type
+  # check that structdefnameS has not been used already in the context of this struct def
+create MAP named INTERNAL_STRUCT_VD_${modUS}_${structdefnameS} and copy content of structdefL into it, with nameS as the map key
+add "${modUS}_${structdefnameS}" to INTERNAL_STRUCT_V_structdefnameM
+----
+
+
+usage:
+structdefnameS=fred_STD  structnameS=myFredST  INTERNAL_STRUCT_A_alloc
+
+INTERNAL_STRUCT_A_alloc is defined like:
+----
+# check for existence & types of structdefnameS and structnameS vars
+# ensure structdefnameS refers to a known struct def
+# ensure structnameS is a valid struct varname
+# look up struct def via structdefnameS. we'll refer to it as SDM
+# create a new VD map; we'll refer to it as VDM
+for nameS,typeS in SDM
+  # check that typeS is a known type
+  # alloc an instance of typeS, refer to it as TI
+  # point SDL[nameS]->TI
+# call struct type initializer func (if any)
+add "${modUS}_${structnameS}" to INTERNAL_STRUCT_V_structnameM
+----
+
+
+also need:
+INTERNAL_STRUCT_A_free
+INTERNAL_STRUCT_A_refGet

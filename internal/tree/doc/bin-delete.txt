@@ -1,0 +1,70 @@
+node deletion
+
+node w/o children: just do the deletion
+
+node w/ 1 child: move child to del node place. done.
+
+node w/ 2 children:
+    check lhs child; does it not have rhs child? if so:
+	move rhs child to be lhs child's rhs child.
+        move lhs child to del node place.  done.
+    check rhs child; does it not have lhs child? if so:
+	move lhs child to be rhs child's lhs child.
+        move rhs child to del node place.  done.
+
+    when both lhs and rhs children have 2 children of their own...
+
+
+                                  100
+		         50                 150
+		     25     55         140      160
+		   12 28   52 57     130 145  155 165
+
+
+e.g. del 50 from the above, what now?
+can move either child (i.e. 25 or 55) to 50 spot. (use 55 as e.g.)
+attach the other tree (e.g. 25) as lhs child of 55 tree's most lhs child
+should keep track of num children, enhances choice of move for best balance
+
+
+
+----
+
+idea: add a non-value-containing head node; makes deletion of value-containing true head node easier
+idea: add counting as an option to tree, rather than just present or not
+
+head node should contain:
+- comparatorFuncnameS
+- optCountB
+- nodecountI
+- totalcountI
+- treerefS
+
+
+----
+
+
+
+            12
+          24
+	    28
+        30
+	  31
+      32
+        33
+    35
+        36
+      37
+        38
+      
+  40
+  
+      42
+    45
+      47
+      
+50
+
+    55
+  60
+    65

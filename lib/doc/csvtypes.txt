@@ -1,0 +1,16 @@
+csv types:
+- java
+- excel
+
+in java:
+- values are sepd by commas
+- values containing none of  ( dq bslash comma <control_chars> )  may be left unquoted
+- values containing any of the above must be quoted
+- values are quoted using bslash char
+- bslash followed by one of  ( o x b )  means that the 3, 2, 8 chars following are interpreted as an octal, hex, or binary number
+
+in excel:
+- values are sepd by commas
+- values containing neither dq nor comma may be left unquoted
+- values w/ commas or dq must be quoted
+- dq is quoted by doubling the char
